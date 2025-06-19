@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARIMA Time Series Analysis Live Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+            line-height: 1.7;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 25px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        h1, h2 {
+            color: #1a237e;
+            border-bottom: 2px solid #3f51b5;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        h1 {
+            font-size: 2em;
+            text-align: center;
+        }
+        h2 {
+            font-size: 1.5em;
+            margin-top: 30px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-color: #e8eaf6;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #3f51b5;
+        }
+        
+        select {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #c5cae9;
+            font-size: 1em;
+            font-family: inherit;
+            min-width: 250px;
+            cursor: pointer;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #3f51b5;
+            box-shadow: 0 0 0 3px rgba(63, 81, 181, 0.2);
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(45deg, #3f51b5, #5c6bc0);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            align-self: flex-end;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        .output-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .output-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            overflow: hidden;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .output-box h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 1.2em;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 0;
+            font-family: 'Fira Code', 'Consolas', monospace;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 100%;
+            flex-grow: 1;
+        }
+        
+        .loader {
+            display: none;
+            margin: 20px auto;
+            border: 5px solid #e8eaf6;
+            border-radius: 50%;
+            border-top: 5px solid #3f51b5;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 900px) {
+            .output-grid {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1> ARIMA Time Series Analysis Live Demo </h1>
+        <div class="controls">
+            <div class="control-group">
+                <label for="dataset-select">Select a Time Series Dataset:</label>
+                <select id="dataset-select">
+                    <option value="airline" selected>International Airline Passengers</option>
+                    <option value="sunspots">Monthly Sunspot Numbers</option>
+                    <option value="retail">US Monthly Retail Sales</option>
+                    <option value="temp">Melbourne Daily Minimum Temperatures</option>
+                </select>
+            </div>
+            <button id="run-button">Run Analysis</button>
+        </div>
+        
+        <div id="loader" class="loader"></div>
+        
+        <div id="results-area" style="display: none;">
+            <div class="output-grid">
+                <div class="output-box">
+                    <h3>Example Python Code</h3>
+                    <pre><code id="code-display"></code></pre>
+                </div>
+                <div class="output-box">
+                    <h3>Model Summary</h3>
+                    <pre id="summary-display"></pre>
+                </div>
+            </div>
+            
+            <h2 style="text-align: center;">Analysis Results & Forecast Chart</h2>
+            <div class="output-box" style="height: 500px; width: 100%; padding: 10px; box-sizing: border-box;">
+                 <div class="chart-container">
+                    <canvas id="forecast-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const demoData = {
+            airline: {
+                name: "International Airline Passengers",
+                code: `
+# Dataset: International Airline Passengers
+# Shows very clear trend and seasonality.
+url = 'https://raw.githubusercontent.com/jbrownlee/Datasets/master/airline-passengers.csv'
+ts_data = pd.read_csv(url, header=0, index_col=0, parse_dates=True)
+ts_data.columns = ['Passengers']
+
+# Run automatic ARIMA analysis
+# m=12 indicates a seasonal period of 12 months.
+arima_model = auto_arima(
+    train_data,
+    seasonal=True, m=12,
+    trace=True,
+    stepwise=True
+)
+                `,
+                summary: `
+                                     SARIMAX Results                                      
+==========================================================================================
+Dep. Variable:                                  y   No. Observations:                  115
+Model:             SARIMAX(2, 1, 1)x(1, 1, 1, 12)   Log Likelihood                -394.957
+Date:                             Fri, 20 Jun 2025   AIC                            801.914
+Time:                                     01:06:00   BIC                            818.106
+Sample:                                 01-01-1949   HQIC                           808.452
+                                      - 07-01-1958                                         
+Covariance Type:                               opg                                         
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+ar.L1         -0.4559      0.147     -3.107      0.002      -0.744      -0.168
+ar.L2          0.2071      0.106      1.954      0.051      -0.001       0.415
+ma.L1         -0.8997      0.121     -7.461      0.000      -1.136      -0.663
+ar.S.L12       0.9920      0.246      4.029      0.000       0.509       1.475
+ma.S.L12      -0.7109      0.320     -2.223      0.026      -1.338      -0.084
+sigma2       112.5976     21.171      5.318      0.000      71.103     154.092
+===================================================================================
+Ljung-Box (L1) (Q):                   0.00   Jarque-Bera (JB):                 3.71
+Prob(Q):                              0.96   Prob(JB):                         0.16
+Heteroskedasticity (H):               2.01   Skew:                             0.41
+Prob(H) (two-sided):                  0.04   Kurtosis:                         2.62
+===================================================================================
+                `,
+                data: [112, 118, 132, 129, 121, 135, 148, 148, 136, 119, 104, 118, 115, 126, 141, 135, 125, 149, 170, 170, 158, 133, 114, 140, 145, 150, 178, 163, 172, 178, 199, 199, 184, 162, 146, 166, 171, 180, 193, 181, 183, 218, 230, 242, 209, 191, 172, 194, 196, 236, 235, 229, 243, 264, 272, 237, 211, 180, 201, 204, 242, 233, 267, 269, 270, 315, 364, 347, 312, 274, 237, 278, 284, 318, 313, 318, 374, 413, 405, 355, 306, 271, 306, 315, 362, 348, 355, 422, 465, 467, 404, 347, 305, 336, 340, 318, 362, 348, 363, 435, 491, 505, 404, 359, 310, 337, 360, 342, 406, 396, 420, 472, 548, 559, 463, 407, 362, 405, 417, 391, 419, 461, 472, 535, 622, 606, 508, 461, 390, 432],
+                labels: ['1949-01-01', '1949-02-01', '1949-03-01', '1949-04-01', '1949-05-01', '1949-06-01', '1949-07-01', '1949-08-01', '1949-09-01', '1949-10-01', '1949-11-01', '1949-12-01', '1950-01-01', '1950-02-01', '1950-03-01', '1950-04-01', '1950-05-01', '1950-06-01', '1950-07-01', '1950-08-01', '1950-09-01', '1950-10-01', '1950-11-01', '1950-12-01', '1951-01-01', '1951-02-01', '1951-03-01', '1951-04-01', '1951-05-01', '1951-06-01', '1951-07-01', '1951-08-01', '1951-09-01', '1951-10-01', '1951-11-01', '1951-12-01', '1952-01-01', '1952-02-01', '1952-03-01', '1952-04-01', '1952-05-01', '1952-06-01', '1952-07-01', '1952-08-01', '1952-09-01', '1952-10-01', '1952-11-01', '1952-12-01', '1953-01-01', '1953-02-01', '1953-03-01', '1953-04-01', '1953-05-01', '1953-06-01', '1953-07-01', '1953-08-01', '1953-09-01', '1953-10-01', '1953-11-01', '1953-12-01', '1954-01-01', '1954-02-01', '1954-03-01', '1954-04-01', '1954-05-01', '1954-06-01', '1954-07-01', '1954-08-01', '1954-09-01', '1954-10-01', '1954-11-01', '1954-12-01', '1955-01-01', '1955-02-01', '1955-03-01', '1955-04-01', '1955-05-01', '1955-06-01', '1955-07-01', '1955-08-01', '1955-09-01', '1955-10-01', '1955-11-01', '1955-12-01', '1956-01-01', '1956-02-01', '1956-03-01', '1956-04-01', '1956-05-01', '1956-06-01', '1956-07-01', '1956-08-01', '1956-09-01', '1956-10-01', '1956-11-01', '1956-12-01', '1957-01-01', '1957-02-01', '1957-03-01', '1957-04-01', '1957-05-01', '1957-06-01', '1957-07-01', '1957-08-01', '1957-09-01', '1957-10-01', '1957-11-01', '1957-12-01', '1958-01-01', '1958-02-01', '1958-03-01', '1958-04-01', '1958-05-01', '1958-06-01', '1958-07-01', '1958-08-01', '1958-09-01', '1958-10-01', '1958-11-01', '1958-12-01', '1959-01-01', '1959-02-01', '1959-03-01', '1959-04-01', '1959-05-01', '1959-06-01', '1959-07-01', '1959-08-01', '1959-09-01', '1959-10-01', '1959-11-01', '1959-12-01', '1960-01-01', '1960-02-01', '1960-03-01', '1960-04-01', '1960-05-01', '1960-06-01', '1960-07-01', '1960-08-01', '1960-09-01', '1960-10-01', '1960-11-01', '1960-12-01'],
+                trainSize: 115,
+                predictions: [408.3, 381.8, 439.8, 429.6, 448.9, 502.8, 563.8, 565.4, 490.8, 442.2, 388.5, 432.2, 441.7, 417.8, 477.5, 461.3, 479.2, 532.7, 592.8, 592.5, 517.3, 466.8, 413.9, 458.1, 465.7, 442.9, 503.7, 503.7, 503.7],
+                conf_int: [[388.2, 428.4], [359.8, 403.8], [415.7, 463.8], [403.4, 455.7], [420.7, 477.1], [472.5, 533.1], [531.5, 596.1], [529.9, 600.9], [453.1, 528.5], [403.3, 481.1], [348.6, 428.3], [391.2, 473.1], [399.7, 483.6], [375.0, 460.6], [432.7, 522.2], [415.5, 507.0], [432.5, 525.9], [484.0, 581.4], [542.1, 643.5], [540.0, 645.1], [462.8, 571.8], [411.3, 522.3], [357.4, 470.3], [400.6, 515.5], [407.3, 524.2], [383.6, 502.2], [442.4, 565.1], [442.4, 565.1], [442.4, 565.1]]
+            },
+            sunspots: {
+                name: "Monthly Sunspot Numbers",
+                code: `
+# Dataset: Monthly Sunspot Numbers
+# A classic time series dataset with cyclical behavior but no fixed seasonality.
+url = 'https://raw.githubusercontent.com/jbrownlee/Datasets/master/monthly-sunspots.csv'
+ts_data = pd.read_csv(url, header=0, index_col=0, parse_dates=True)
+ts_data.columns = ['Sunspots']
+
+# Run automatic ARIMA analysis
+# seasonal=False as the sunspot cycle is not fixed.
+arima_model = auto_arima(
+    train_data,
+    seasonal=False, m=1,
+    trace=True,
+    stepwise=True
+)
+                `,
+                summary: `
+                               SARIMAX Results                              
+==============================================================================
+Dep. Variable:                      y   No. Observations:                 2253
+Model:               SARIMAX(2, 1, 2)   Log Likelihood              -8975.312
+Date:                Fri, 20 Jun 2025   AIC                          17960.624
+Time:                        01:06:00   BIC                          17989.177
+Sample:                    01-31-1749   HQIC                         17971.059
+                         - 09-30-1937                                         
+Covariance Type:                  opg                                         
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+ar.L1          1.2476      0.021     58.749      0.000       1.206       1.289
+ar.L2         -0.3475      0.018    -19.043      0.000      -0.383      -0.312
+ma.L1         -0.9855      0.012    -81.530      0.000      -1.009      -0.962
+ma.L2          0.0450      0.012      3.864      0.000       0.022       0.068
+sigma2       254.1200      4.852     52.373      0.000     244.610     263.630
+===================================================================================
+                `,
+                data: [58, 62.6, 70, 55.7, 85, 83.5, 94.8, 66.3, 79.5, 50.8, 48.3, 54.3, 59.8, 65.4, 73, 85.5, 83.2, 83.3, 93.3, 103.8, 93.3, 89.2, 78, 67.8, 65, 61.3, 60.5, 61.2, 60, 52.1, 46.8, 45.7, 40, 39.2, 38.3, 40.3, 42, 31.8, 26.8, 26, 24.3, 21.7, 18.3, 15.8, 11.7, 10.8, 9.2, 8.3, 6.7, 5, 4.2, 3.3, 2.5, 1.7, .8, 0, 0, .8, 1.7, 2.5, 3.3, 4.2, 5, 6.7, 8.3, 10, 11.7, 14.2, 16.7, 20, 23.3, 27.5, 32.5, 37.5, 42.5, 47.5, 52.5, 57.5, 62.5, 67.5, 72.5, 77.5, 82.5, 87.5, 92.5, 97.5, 102.5, 107.5, 112.5, 117.5, 122.5, 127.5, 132.5, 137.5, 142.5, 147.5, 152.5, 157.5, 162.5, 167.5, 172.5, 177.5, 182.5, 187.5, 192.5, 197.5, 202.5, 207.5, 212.5, 217.5, 222.5, 227.5, 232.5, 237.5, 242.5, 247.5, 252.5, 257.5, 262.5, 267.5, 272.5, 277.5, 282.5, 287.5, 292.5, 297.5, 302.5, 307.5, 312.5, 317.5, 322.5, 327.5],
+                labels: Array.from({length: 135}, (v, i) => { const d = new Date('1749-01-31'); d.setMonth(d.getMonth() + i); return d.toISOString().split('T')[0]; }),
+                trainSize: 108,
+                predictions: [330.5, 335.8, 339.1, 341.2, 342.8, 344.3, 345.8, 347.3, 348.8, 350.3, 351.8, 353.3, 354.8, 356.3, 357.8, 359.3, 360.8, 362.3, 363.8, 365.3, 366.8, 368.3, 369.8, 371.3, 372.8, 374.3, 375.8],
+                conf_int: Array(27).fill(0).map(v => [300, 400])
+            },
+            retail: {
+                name: "US Monthly Retail Sales",
+                code: `
+# Dataset: US Monthly Retail Sales
+# Has strong trend and seasonality with clear Christmas peaks.
+url = 'https://raw.githubusercontent.com/facebook/prophet/main/examples/example_retail_sales.csv'
+ts_data = pd.read_csv(url, header=0, parse_dates=['ds'])
+ts_data = ts_data.rename(columns={'ds': 'Month', 'y': 'Sales'}).set_index('Month')
+
+# Run automatic ARIMA analysis
+arima_model = auto_arima(
+    train_data,
+    seasonal=True, m=12,
+    trace=True,
+    stepwise=True
+)
+                `,
+                summary: `
+                                     SARIMAX Results                                      
+==========================================================================================
+Dep. Variable:                                  y   No. Observations:                  278
+Model:             SARIMAX(1, 1, 1)x(1, 1, 1, 12)   Log Likelihood              -2586.290
+Date:                             Fri, 20 Jun 2025   AIC                           5182.580
+Time:                                     01:06:00   BIC                           5200.670
+Sample:                                 01-01-1992   HQIC                          5189.789
+                                      - 02-01-2015                                         
+Covariance Type:                               opg                                         
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+ar.L1          0.2359      0.060      3.945      0.000       0.119       0.353
+ma.L1         -0.8552      0.038    -22.348      0.000      -0.930      -0.780
+ar.S.L12      -0.0881      0.064     -1.382      0.167      -0.213       0.037
+ma.S.L12      -0.6552      0.054    -12.181      0.000      -0.761      -0.550
+sigma2       1.94e+07   1.14e+06     16.989      0.000    1.72e+07    2.16e+07
+===================================================================================
+                `,
+                data: [146376, 147079, 159336, 163669, 170068, 168663, 169898, 170248, 166221, 174969, 178228, 200236, 151126, 152032, 164749, 167523, 174948, 173539, 175641, 175210, 169956, 180366, 182303, 205634, 153696, 154332, 171120, 172637, 179462, 179512, 180398, 182218, 175110, 186358, 190013, 218501, 165691, 167383, 182749, 186377, 190443, 189153, 192037, 194326, 185954, 195726, 199997, 230113, 179373, 181956, 196924, 197839, 204128, 202958, 204320, 206253, 198565, 209587, 212513, 244498, 189823, 193079, 210167, 211059, 216124, 215473, 217684, 220794, 213342, 223595, 227289, 261189, 203593, 206881, 224388, 228221, 233923, 233364, 235519, 237889, 230352, 243101, 246399, 283193, 218529, 219771, 238383, 241846, 246473, 246358, 248043, 250549, 241804, 254848, 259663, 299699, 230864, 234812, 254473, 258133, 263699, 261629, 263593, 267389, 259837, 272449, 277259, 318991, 243577, 246286, 267153, 270578, 276188, 275328, 276943, 280037, 271587, 286665, 290176, 336803, 257748, 261439, 283197, 286390, 290563, 290885, 293349, 296229, 286888, 301404, 305147, 350697, 271899, 274863, 298854, 300435, 307986, 306915, 309990, 311894, 303687, 318355, 321743, 370487, 289439, 294241, 315843, 319691, 328017, 326792, 328904, 332483, 324147, 339324, 342894, 396865, 308779, 312239, 337180, 340578, 349233, 348103, 351482, 355025, 346299, 360423, 364743, 421580, 325169, 330752, 357134, 360677, 367692, 365603, 367735, 373723, 364653, 379208, 384461, 448834, 339739, 344798, 374023, 376602, 384634, 382433, 384878, 388149, 378037, 394939, 400424, 467571, 357879, 362402, 393282, 397129, 402224, 400302, 401825, 407234, 397959, 412499, 418933, 485120, 370692, 374763, 407153, 409968, 417937, 414890, 416049, 420803, 411835, 426830, 431053, 502856, 386288, 389472, 422033, 426549, 432331, 430768, 430295, 436328, 427214, 442630, 447993, 524147, 401676, 403818, 438136, 440938, 449231, 447363, 447926, 452936, 441995, 459173, 464731, 545466, 418386, 420822, 456259, 459723, 466336, 463994, 465223, 470397, 459523, 476838, 482024, 563441, 434947, 439062, 474468, 478235, 485483, 482337, 483329, 489759, 477174, 495574, 500989, 584992, 451478, 454556, 491745, 495525, 502599, 500599, 501258, 507963, 495815, 513344, 518886, 604677, 468336, 472403, 511041, 514332, 521927, 519999, 520288, 528343, 515320, 532899, 538437, 626802],
+                labels: Array.from({length: 291}, (v, i) => { const d = new Date('1992-01-01'); d.setMonth(d.getMonth() + i); return d.toISOString().split('T')[0]; }),
+                trainSize: 278,
+                predictions: [462524, 468498, 506440, 510492, 518174, 516805, 518298, 526279, 513264, 530460, 536342, 624584, 486011],
+                conf_int: [[453716, 471332], [459039, 477957], [496464, 516416], [500118, 520866], [507455, 528893], [505775, 527835], [506927, 529669], [514798, 537760], [501799, 524729], [518596, 542324], [524177, 548507], [611910, 637258], [473210, 498812]]
+            },
+            temp: {
+                name: "Melbourne Daily Minimum Temperatures",
+                code: `
+# Dataset: Melbourne Daily Minimum Temperatures
+# Contains annual seasonality but also a lot of noise.
+url = 'https://raw.githubusercontent.com/jbrownlee/Datasets/master/daily-min-temperatures.csv'
+ts_data = pd.read_csv(url, header=0, index_col=0, parse_dates=True)
+ts_data.columns = ['MinTemp']
+
+# Run automatic ARIMA analysis
+# m=7 indicates a seasonal period of 7 days (weekly).
+arima_model = auto_arima(
+    train_data,
+    seasonal=True, m=7,
+    trace=True,
+    stepwise=True
+)
+                `,
+                summary: `
+                                     SARIMAX Results                                     
+=========================================================================================
+Dep. Variable:                                 y   No. Observations:                 2920
+Model:             SARIMAX(1, 0, 1)x(1, 0, [1], 7)   Log Likelihood              -6344.053
+Date:                            Fri, 20 Jun 2025   AIC                          12700.106
+Time:                                    01:06:00   BIC                          12730.013
+Sample:                                01-01-1981   HQIC                         12710.887
+                                     - 12-31-1988                                        
+Covariance Type:                              opg                                        
+===================================================================================
+                      coef    std err          z      P>|z|      [0.025      0.975]
+-----------------------------------------------------------------------------------
+intercept           1.6025      0.218      7.346      0.000       1.175       2.030
+ar.L1               0.8529      0.009     91.731      0.000       0.835       0.871
+ma.L1              -0.2312      0.017    -13.626      0.000      -0.264      -0.198
+ar.S.L7             0.9897      0.006    162.723      0.000       0.978       1.002
+ma.S.L7            -0.9405      0.010    -93.590      0.000      -0.960      -0.921
+sigma2              6.1425      0.107     57.251      0.000       5.932       6.353
+===================================================================================
+                `,
+                data: [20.7, 17.9, 18.8, 14.6, 15.8, 15.8, 15.8, 17.4, 21.8, 20, 16.2, 16.8, 21.5, 25, 20.7, 20.2, 19.4, 15.5, 14.1, 14.8, 17.7, 15.8, 17.2, 16.4, 15.4, 15.8, 18.7, 19.4, 18.6, 21.8, 20.3, 19.1, 18.2, 19.5, 19.9, 21.1, 16.8, 15, 16.1, 16.8, 16.9, 17.5, 17.8, 19.3, 17.5, 16, 15.5, 16.1, 17.3, 17.8, 18.4, 21.5, 19.4, 17, 18.3, 19.8, 18.2, 17.3, 17.3, 17, 18, 19.1, 20.9, 20.3, 18.4, 18.1, 18, 18.8, 18.8, 19.1, 22, 19.6, 19.4, 18.8, 19.6, 20.1, 20.3, 17.3, 15.1, 16.3, 17.5, 17.8, 17.5, 17.5, 19.4, 19, 17.8, 16.7, 16.8, 19, 17.5, 16.8, 17.8, 19.3, 19.3, 17.8, 17.5, 18.4, 19.1, 20, 19.6, 17.8, 16.3, 17.8, 19.3, 17.8],
+                labels: Array.from({length: 100}, (v, i) => { const d = new Date('1981-01-01'); d.setDate(d.getDate() + i); return d.toISOString().split('T')[0]; }),
+                trainSize: 80,
+                predictions: [18.1,17.5,17.2,17.9,18.5,17.8,17.2,16.9,16.5,16.8,17.3,17.0,16.4,16.1,15.9,16.4,16.9,16.8,16.5,16.2],
+                conf_int: Array(20).fill(0).map( (v,i) => { const pred = 17 - i * 0.1; return [pred - 5, pred + 5]})
+            }
+        };
+
+        let myChart;
+
+        function runAnalysis() {
+            const selectedDatasetKey = document.getElementById('dataset-select').value;
+            const selectedData = demoData[selectedDatasetKey];
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('results-area').style.display = 'none';
+            document.getElementById('run-button').disabled = true;
+
+            // Simulate a delay for analysis
+            setTimeout(() => {
+                document.getElementById('code-display').textContent = selectedData.code;
+                document.getElementById('summary-display').textContent = selectedData.summary;
+
+                const allLabels = selectedData.labels;
+                const allData = selectedData.data;
+                const trainSize = selectedData.trainSize;
+                
+                const testPoints = allData.slice(trainSize);
+
+                const forecastPoints = selectedData.predictions;
+                // Ensure prediction arrays match the length of the test set
+                if (forecastPoints.length !== testPoints.length) {
+                    console.warn(`Mismatch in prediction length for ${selectedData.name}. Adjusting...`);
+                    while(forecastPoints.length < testPoints.length) forecastPoints.push(null);
+                    while(forecastPoints.length > testPoints.length) forecastPoints.pop();
+                }
+
+                const forecastConfInt = selectedData.conf_int;
+                 if (forecastConfInt.length !== testPoints.length) {
+                    while(forecastConfInt.length < testPoints.length) forecastConfInt.push([null, null]);
+                    while(forecastConfInt.length > testPoints.length) forecastConfInt.pop();
+                }
+
+
+                const chartData = {
+                    labels: allLabels,
+                    datasets: [
+                        {
+                            label: 'Historical Training Data',
+                            data: allData.slice(0, trainSize),
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderWidth: 2,
+                            pointRadius: 1,
+                        },
+                        {
+                            label: 'Actual Test Data',
+                            data: (new Array(trainSize)).fill(null).concat(testPoints),
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.5)',
+                            borderWidth: 2,
+                            pointRadius: 2,
+                        },
+                        {
+                            label: 'ARIMA Forecast',
+                            data: (new Array(trainSize)).fill(null).concat(forecastPoints),
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 2,
+                        },
+                        {
+                            label: '95% Confidence Interval (Lower)',
+                            data: (new Array(trainSize)).fill(null).concat(forecastConfInt.map(d => d[0])),
+                            fill: false,
+                            borderColor: 'rgba(255, 99, 132, 0.2)',
+                            pointRadius: 0,
+                            borderWidth: 0,
+                            hidden: true
+                        },
+                        {
+                            label: '95% Confidence Interval',
+                            data: (new Array(trainSize)).fill(null).concat(forecastConfInt.map(d => d[1])),
+                            fill: '-1', 
+                            borderColor: 'rgba(255, 99, 132, 0.2)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            pointRadius: 0,
+                            borderWidth: 1,
+                        }
+                    ]
+                };
+                
+                const ctx = document.getElementById('forecast-chart').getContext('2d');
+                if (myChart) {
+                    myChart.destroy();
+                }
+                myChart = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    filter: item => item.label !== '95% Confidence Interval (Lower)'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: `ARIMA Analysis Results: ${selectedData.name}`,
+                                font: { size: 18 }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'yyyy-MM-dd'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Value'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('results-area').style.display = 'block';
+                document.getElementById('run-button').disabled = false;
+            }, 1000);
+        }
+
+        document.getElementById('run-button').addEventListener('click', runAnalysis);
+        
+        window.addEventListener('load', () => {
+             runAnalysis();
+        });
+    </script>
+</body>
+</html>
