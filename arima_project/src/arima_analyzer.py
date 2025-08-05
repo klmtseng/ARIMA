@@ -1,7 +1,7 @@
 import pandas as pd
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.arima.model import ARIMA
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolute_percentage_error
 import numpy as np
 import pmdarima as pm
 
@@ -258,14 +258,14 @@ def forecast(model, steps):
 
 def evaluate_model(test_data, predictions):
     """
-    Evaluates the model using RMSE and MAE.
+    Evaluates the model using RMSE, MAE, and MAPE.
 
     Args:
         test_data (pd.Series or np.array): The actual observed values.
         predictions (pd.Series or np.array): The predicted values from the model.
 
     Returns:
-        dict: A dictionary containing 'rmse' and 'mae' if successful, else None.
+        dict: A dictionary containing 'rmse', 'mae', and 'mape' if successful, else None.
               Returns None if inputs are invalid or lengths don't match.
     """
     if test_data is None or predictions is None:
@@ -292,13 +292,19 @@ def evaluate_model(test_data, predictions):
 
     print("Evaluating model performance...")
     try:
+        # Handle cases with zero values in test_data which cause infinity in MAPE
+        if np.any(test_data == 0):
+            print("Warning: Zeros found in test data. MAPE may be undefined or misleading.")
+
         rmse = np.sqrt(mean_squared_error(test_data, predictions))
         mae = mean_absolute_error(test_data, predictions)
+        mape = mean_absolute_percentage_error(test_data, predictions)
 
         print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
         print(f"Mean Absolute Error (MAE): {mae:.4f}")
+        print(f"Mean Absolute Percentage Error (MAPE): {mape:.2%}")
 
-        return {'rmse': rmse, 'mae': mae}
+        return {'rmse': rmse, 'mae': mae, 'mape': mape}
     except Exception as e:
         print(f"Error during model evaluation: {e}")
         return None

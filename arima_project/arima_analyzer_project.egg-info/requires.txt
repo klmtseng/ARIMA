@@ -1,8 +1,7 @@
 pandas
-numpy<2.0
+numpy
 statsmodels
 pmdarima
 matplotlib
 streamlit
 scikit-learn
-pytest

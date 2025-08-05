@@ -1,0 +1,10 @@
+README.md
+setup.py
+arima_analyzer_project.egg-info/PKG-INFO
+arima_analyzer_project.egg-info/SOURCES.txt
+arima_analyzer_project.egg-info/dependency_links.txt
+arima_analyzer_project.egg-info/requires.txt
+arima_analyzer_project.egg-info/top_level.txt
+src/__init__.py
+src/arima_analyzer.py
+tests/test_arima_analyzer.py

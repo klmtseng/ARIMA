@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: arima_analyzer_project
+Version: 0.1.0
+Summary: A project for ARIMA time series analysis and forecasting
+Author: AI Assistant
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: statsmodels
+Requires-Dist: pmdarima
+Requires-Dist: matplotlib
+Requires-Dist: streamlit
+Requires-Dist: scikit-learn
+Dynamic: author
+Dynamic: classifier
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

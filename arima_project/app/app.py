@@ -5,10 +5,8 @@ import os
 import matplotlib.pyplot as plt
 from io import StringIO
 
-# Add src directory to Python path to import arima_analyzer
-# This assumes app.py is in arima_project/app/ and arima_analyzer.py is in arima_project/src/
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-import arima_analyzer as arima
+# Assuming the project is installed as a package, import from src
+from src import arima_analyzer as arima
 
 # --- Streamlit App Configuration ---
 st.set_page_config(page_title="ARIMA Time Series Forecaster", layout="wide")
@@ -42,9 +40,25 @@ if uploaded_file is not None:
         value_column = st.sidebar.selectbox("Select Value Column", available_columns, index=1 if len(available_columns) > 1 else -1, key="value_col")
 
         st.sidebar.subheader("ARIMA Parameters")
-        # Basic model parameters - auto_arima will find optimal ones
-        m_seasonality = st.sidebar.number_input("Seasonality Period (m)", min_value=1, value=12, help="e.g., 12 for monthly, 4 for quarterly, 1 for non-seasonal", key="m_seas")
-        forecast_steps = st.sidebar.number_input("Number of Steps to Forecast", min_value=1, value=12, key="f_steps")
+        m_seasonality = st.sidebar.number_input("Seasonality Period (m)", min_value=1, value=12, help="e.g., 12 for monthly, 4 for quarterly, 1 for non-seasonal.", key="m_seas")
+
+        st.sidebar.subheader("Train/Test Split")
+        test_size = st.sidebar.slider(
+            "Test Set Size (Number of recent data points)",
+            min_value=0,
+            max_value=len(df_preview) - 1 if len(df_preview) > 1 else 0, # Ensure train set is not empty
+            value=min(12, len(df_preview) - 1) if len(df_preview) > 1 else 0,
+            help="Set to 0 to train on all data and forecast future values."
+        )
+
+        st.sidebar.subheader("Forecasting")
+        forecast_steps = st.sidebar.number_input(
+            "Number of Steps to Forecast",
+            min_value=1,
+            value=12,
+            key="f_steps",
+            help="If using a test set, this is ignored and the forecast matches the test set size. Otherwise, this is the number of future steps to predict."
+        )
 
         run_analysis = st.sidebar.button("🚀 Run Analysis & Forecast", key="run_button")
 
@@ -129,8 +143,18 @@ if run_analysis and uploaded_file is not None:
         else:
             st.info("Non-seasonal model or m=1, so no seasonal order was determined or applied.")
 
-        # 3. Split data - Using full series for training as per simplified app logic
-        train_ts = ts
+        # 3. Split data
+        if test_size > 0 and len(ts) > test_size:
+            train_ts = ts[:-test_size]
+            test_ts = ts[-test_size:]
+            st.subheader("Train/Test Data Split")
+            st.write(f"Training data: {len(train_ts)} points")
+            st.write(f"Test data: {len(test_ts)} points")
+        else:
+            train_ts = ts
+            test_ts = None
+            st.subheader("Training on Full Dataset")
+            st.write("No test set selected. The model will be trained on the entire dataset.")
 
         # 4. Fit ARIMA Model
         st.subheader("ARIMA Model Fitting")
