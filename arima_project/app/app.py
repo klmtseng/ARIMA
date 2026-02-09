@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import sys
 import os
+import tempfile
 
 # Add src directory to Python path to import arima_analyzer
 # This assumes app.py is in arima_project/app/ and arima_analyzer.py is in arima_project/src/
@@ -27,6 +28,11 @@ st.sidebar.header("⚙️ Configuration")
 uploaded_file = st.sidebar.file_uploader("Upload your CSV data", type=["csv"])
 
 if uploaded_file is not None:
+    max_upload_mb = 10
+    max_upload_bytes = max_upload_mb * 1024 * 1024
+    if uploaded_file.size > max_upload_bytes:
+        st.error(f"Uploaded file exceeds {max_upload_mb} MB limit. Please upload a smaller file.")
+        st.stop()
     st.sidebar.subheader("CSV Column Names")
     # Infer columns for selection - this requires reading the CSV first
     try:
@@ -62,14 +68,16 @@ if run_analysis and uploaded_file is not None:
         # Load data using the arima_analyzer module
         # We need to save the uploaded file temporarily or pass its buffer
         # For simplicity, let's save it temporarily.
-        temp_file_path = os.path.join("temp_uploaded_data.csv") # Create in current dir or a temp dir
-        with open(temp_file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+        temp_file_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
+                temp_file.write(uploaded_file.getbuffer())
+                temp_file_path = temp_file.name
 
-        ts = arima.load_data(temp_file_path, date_column, value_column)
-
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path) # Clean up temp file
+            ts = arima.load_data(temp_file_path, date_column, value_column)
+        finally:
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.remove(temp_file_path) # Clean up temp file
 
     if ts is None:
         st.error("Failed to load or process time series data. Check column names and data format.")
