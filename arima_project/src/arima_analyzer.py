@@ -21,7 +21,15 @@ def load_data(filepath, date_column, value_column):
     try:
         data = pd.read_csv(filepath, parse_dates=[date_column], index_col=date_column)
         ts = data[value_column]
-        ts = ts.asfreq(pd.infer_freq(ts.index)) # Infer frequency
+        ts = pd.to_numeric(ts, errors='coerce')
+        if ts.isna().all():
+            print(f"Error: Column '{value_column}' contains no numeric data.")
+            return None
+        freq = pd.infer_freq(ts.index)
+        if freq:
+            ts = ts.asfreq(freq) # Infer frequency
+        else:
+            print("Warning: Could not infer frequency from index. Proceeding without setting frequency.")
         return ts
     except FileNotFoundError:
         print(f"Error: File not found at {filepath}")
